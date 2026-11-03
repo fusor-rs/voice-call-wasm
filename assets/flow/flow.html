@@ -1,0 +1,127 @@
+<!doctype html>
+<!--
+  The README's flow diagram: the three models of a call in turn, and one turn in time. Rendered at
+  1400×780, twice the pixels, by `node scripts/render-images.mjs` into flow.png and flow-dark.png
+  (`?theme=dark`).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --canvas: #faf9f6; --surface: #f1efea; --raised: #ffffff; --ink: #272a2c; --soft: #5c5f61;
+    --faint: #686b6d; --hairline: #e3e0d9; --accent: #a83228;
+    --asr: #1f8a5b; --llm: #1c4ed8; --tts: #df5036; --you: #5c5f61;
+  }
+  :root.dark {
+    --canvas: #121314; --surface: #1b1d1e; --raised: #222426; --ink: #f2f1ed; --soft: #b4b5b3;
+    --faint: #8b8d8d; --hairline: #303335; --accent: #f0715a;
+    --asr: #3fb37f; --llm: #6e8bff; --tts: #f0715a; --you: #686b6d;
+  }
+  html, body { margin: 0; }
+  body {
+    width: 1400px; height: 780px; box-sizing: border-box; padding: 44px 56px;
+    background: var(--canvas); color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-rows: auto auto 1fr; gap: 28px;
+  }
+  h2 { margin: 0; font-size: 30px; letter-spacing: -0.02em; font-weight: 700; }
+  h2 small { display: block; margin-top: 6px; font-size: 19px; font-weight: 450; color: var(--soft); letter-spacing: 0; }
+
+  .chain { display: grid; grid-template-columns: 96px 1fr 250px 1fr 250px 1fr 250px 1fr 96px; align-items: stretch; }
+  .end { align-self: center; display: grid; justify-items: center; gap: 10px; color: var(--soft); font-size: 17px; font-weight: 550; }
+  .end svg { width: 58px; height: 58px; color: var(--you); }
+  .model {
+    background: var(--raised); border: 1px solid var(--hairline); border-top: 6px solid var(--color);
+    border-radius: 20px; padding: 20px 20px 22px; display: grid; gap: 8px;
+  }
+  .model header { display: flex; align-items: center; gap: 12px; }
+  .model img { width: 40px; height: 40px; }
+  .model strong { font-size: 21px; letter-spacing: -0.01em; white-space: nowrap; }
+  .model .role { font-size: 15px; font-weight: 650; color: var(--color); text-transform: uppercase; letter-spacing: 0.06em; }
+  .model p { margin: 0; font-size: 15.5px; color: var(--soft); line-height: 1.4; }
+  .arrow { align-self: center; display: grid; gap: 8px; padding: 0 10px; font-size: 14px; color: var(--faint); text-align: center; line-height: 1.25; }
+  .arrow::after { content: ""; height: 2px; background: linear-gradient(var(--faint), var(--faint)) no-repeat left / calc(100% - 8px) 100%; position: relative; }
+  .arrow::before { content: ""; order: 2; justify-self: end; margin-top: -15px; border: 6px solid transparent; border-left: 9px solid var(--faint); border-right: 0; }
+
+  .tab { border: 1.5px dashed var(--hairline); border-radius: 16px; padding: 12px 18px; font-size: 15.5px; color: var(--soft); text-align: center; }
+  .tab b { color: var(--ink); font-weight: 650; }
+
+  .time { display: grid; gap: 14px; align-content: start; }
+  .time h3 { margin: 0; font-size: 21px; font-weight: 650; }
+  .lanes { position: relative; display: grid; gap: 10px; }
+  .lane { display: grid; grid-template-columns: 150px 1fr; align-items: center; font-size: 15.5px; color: var(--soft); }
+  .track { position: relative; height: 30px; background: var(--surface); border-radius: 8px; }
+  .bar { box-sizing: border-box; position: absolute; top: 0; bottom: 0; border-radius: 8px; background: var(--color); color: #fff; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; padding: 0 10px; white-space: nowrap; overflow: hidden; }
+  .bar.soft { background: color-mix(in srgb, var(--color) 30%, transparent); color: var(--ink); }
+  .marker { position: absolute; top: -8px; bottom: -8px; width: 0; border-left: 2px dashed var(--accent); }
+  .marker span { position: absolute; top: -26px; left: -60px; width: 120px; text-align: center; font-size: 13.5px; font-weight: 650; color: var(--accent); }
+  .axis { display: grid; grid-template-columns: 150px 1fr; font-size: 14px; color: var(--faint); }
+  .response { position: relative; height: 26px; }
+  .response div { position: absolute; top: 10px; height: 0; border-top: 2px solid var(--accent); }
+  .response div::before, .response div::after { content: ""; position: absolute; top: -7px; height: 12px; border-left: 2px solid var(--accent); }
+  .response div::before { left: 0; }
+  .response div::after { right: 0; }
+  .sum { margin: 0; font-size: 15px; color: var(--soft); }
+  .response span { position: absolute; top: -2px; transform: translateX(-50%); background: var(--canvas); padding: 0 10px; font-size: 14.5px; font-weight: 650; color: var(--accent); }
+</style>
+</head>
+<body>
+  <h2>Three models in turn, not one speech-to-speech model
+    <small>Each is its own fusor-ai runtime in its own worker and threads, all in one browser tab, sealed from the network.</small>
+  </h2>
+
+  <div class="chain">
+    <div class="end">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+      You speak
+    </div>
+    <div class="arrow"><span>16 kHz audio</span></div>
+    <div class="model" style="--color: var(--asr)">
+      <header><img src="../brand/parakeet.svg" alt=""><div><div class="role">Hears</div><strong>Parakeet Redux</strong></div></header>
+      <p>Speech to text while you talk, read again every 0.5 s; 0.6 s of silence ends your turn.</p>
+    </div>
+    <div class="arrow"><span>your words</span></div>
+    <div class="model" style="--color: var(--llm)">
+      <header><img src="../brand/lfm3.svg" alt=""><div><div class="role">Answers</div><strong>LFM3-1.7B</strong></div></header>
+      <p>Writes the reply a token at a time, the whole call's conversation kept between turns.</p>
+    </div>
+    <div class="arrow"><span>each clause,<br>once whole</span></div>
+    <div class="model" style="--color: var(--tts)">
+      <header><img src="../brand/phonon.svg" alt=""><div><div class="role">Speaks</div><strong>Phonon</strong></div></header>
+      <p>Text to speech in 80 ms frames, clause after clause, while the LLM keeps writing.</p>
+    </div>
+    <div class="arrow"><span>24 kHz frames</span></div>
+    <div class="end">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+      You hear it
+    </div>
+  </div>
+
+  <div class="time">
+    <h3>One turn in time</h3>
+    <div class="lanes">
+      <div class="lane"><span>You</span><div class="track"><div class="bar" style="--color: var(--you); left: 0%; width: 34%">speaking</div></div></div>
+      <div class="lane"><span>Parakeet Redux</span><div class="track"><div class="bar soft" style="--color: var(--asr); left: 4%; width: 31%">transcribing as you speak</div><div class="bar" style="--color: var(--asr); left: 48%; width: 1.5%"></div></div></div>
+      <div class="lane"><span>LFM3-1.7B</span><div class="track"><div class="bar" style="--color: var(--llm); left: 49.5%; width: 22%">prompt, first tokens</div><div class="bar soft" style="--color: var(--llm); left: 71.5%; width: 28.5%">the rest of the reply</div></div></div>
+      <div class="lane"><span>Phonon</span><div class="track"><div class="bar" style="--color: var(--tts); left: 77%; width: 23%">first clause, then the next</div></div></div>
+      <div class="lane"><span>Speaker</span><div class="track"><div class="bar" style="--color: var(--you); left: 79%; width: 21%">the reply plays</div></div></div>
+      <div class="marker" style="left: calc(150px + (100% - 150px) * 0.34)"><span>speech ends</span></div>
+      <div class="marker" style="left: calc(150px + (100% - 150px) * 0.48)"><span>endpoint</span></div>
+      <div class="marker" style="left: calc(150px + (100% - 150px) * 0.79)"><span>first sound</span></div>
+    </div>
+    <div class="axis">
+      <span></span>
+      <div class="response"><div style="left: 34%; width: 45%"></div><span style="left: 56.5%">response</span></div>
+    </div>
+    <div class="axis">
+      <span></span>
+      <p class="sum">The response is the stages in turn: the endpoint's silence, the ASR's last word, the LLM's prompt and first token, its first clause, Phonon's first frame of it, and the playback.</p>
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).get('theme') === 'dark') document.documentElement.classList.add('dark');
+  </script>
+</body>
+</html>

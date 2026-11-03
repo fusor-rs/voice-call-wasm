@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice call · speech to text, an LLM and text to speech in your browser</title>
+  <meta name="description" content="A voice call answered on this device's CPU: Parakeet Redux hears you, LFM3-1.7B answers, Phonon speaks, three models compiled to WebAssembly with fusor-ai and timed from the end of your sentence to the first sound of the reply.">
+  <link rel="icon" href="/brand/voice-call.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/base.css">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <App state="{{ App::new() }}">
+    <script type="module" src="./app.js"></script>
+    <main on:engine="state.receive(event)" data-phase="{{ state.phase().name() }}" data-loaded="{{ state.loaded() }}">
+      <header class="masthead">
+        <div class="lockup">
+          <img src="/brand/fusor-ai.svg" alt="fusor-ai" width="40" height="40">
+          <span class="times" aria-hidden="true">×</span>
+          <img src="/brand/voice-call.svg" alt="" width="36" height="36">
+          <span class="wordmark">Voice call</span>
+        </div>
+        <h1>A phone call, answered on your own CPU</h1>
+        <p class="lede">Not one speech-to-speech model but three models taking turns: Moondream's Parakeet Redux hears you, Liquid AI's LFM3-1.7B writes the answer, Gradium's Phonon speaks it while it is still being written. All three are compiled to WebAssembly with fusor-ai and run in this tab; once loaded, nothing you say leaves the page. Every turn is timed from the end of your sentence to the first sound of the reply.</p>
+      </header>
+
+      <If condition="{{ state.phase() == Phase::Broken }}">
+        <section class="card broken" role="alert">
+          <strong>{{ if state.loaded() { "The call stopped" } else { "The models could not load" } }}</strong>
+          <p id="detail">{{ state.failure.get().unwrap_or_default() }}</p>
+          <If condition="{{ !state.loaded() }}">
+            <p class="muted">A bundle loads only into the runtime built with it. If you built this page yourself, rebuild both with <code>just build</code>.</p>
+          </If>
+          <div class="row"><a id="reload" class="control primary" href="">Reload</a></div>
+        </section>
+      </If>
+
+      <section class="card engines" aria-live="polite">
+        <ForEach items="{{ state.engines.get() }}" key="{{ |engine| engine.id.clone() }}">
+          <div class="engine" data-engine="{{ item.get().id }}" data-ready="{{ item.get().loaded.is_some() }}">
+            <div class="row"><strong>{{ item.get().label }}</strong><span class="muted">{{ item.get().status() }}</span></div>
+            <progress max="1" value="{{ item.get().fraction }}"></progress>
+          </div>
+        </ForEach>
+      </section>
+
+      <section class="card call">
+        <fieldset hidden="{{ state.voices.get().is_empty() }}" disabled="{{ state.phase() != Phase::Idle }}">
+          <legend>The assistant's voice</legend>
+          <div class="voices">
+            <ForEach items="{{ state.voices.get() }}" key="{{ |voice| voice.id.clone() }}">
+              <label class="voice"><input type="radio" name="voice" value="{{ item.get().id }}" bind="state.voice.clone()"><span>{{ item.get().label }}</span></label>
+            </ForEach>
+          </div>
+        </fieldset>
+        <div class="row">
+          <button id="call" type="button" class="control primary" disabled="{{ !matches!(state.phase(), Phase::Idle | Phase::Calling) }}" on:click="state.call()">{{ state.call_label() }}</button>
+        </div>
+        <div class="level" style="{{ state.level_style() }}" aria-hidden="true"></div>
+        <span id="status" class="muted" aria-live="polite">{{ state.status.get() }}</span>
+        <p class="hearing">{{ state.hearing.get() }}</p>
+      </section>
+
+      <If condition="{{ !state.turns.get().is_empty() }}">
+        <section class="card">
+          <div class="table">
+            <table id="latency">
+              <thead>
+                <tr>
+                  <ForEach items="{{ state.headers() }}" key="{{ |header| header.index }}">
+                    <th title="{{ item.get().note }}">{{ item.get().label }}</th>
+                  </ForEach>
+                </tr>
+              </thead>
+              <tbody>
+                <ForEach items="{{ state.turns.get() }}" key="{{ |turn| turn.id }}">
+                  <tr data-turn="{{ item.get().id }}" data-played="{{ item.get().played() }}">
+                    <ForEach items="{{ item.get().cells() }}" key="{{ |cell| cell.index }}">
+                      <td>{{ item.get().text }}</td>
+                    </ForEach>
+                  </tr>
+                </ForEach>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <ForEach items="{{ state.medians() }}" key="{{ |cell| cell.index }}">
+                    <td>{{ item.get().text }}</td>
+                  </ForEach>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="muted">The stages add up to the response. Hover a column for what it measures. <code>?endpoint=</code> sets the silence that ends a turn (0.6 s), <code>?level=</code> the level of speech, and <code>?asr=</code>, <code>?llm=</code>, <code>?tts=</code> each engine's threads.</p>
+        </section>
+
+        <section class="card">
+          <ol class="conversation">
+            <ForEach items="{{ state.turns.get() }}" key="{{ |turn| turn.id }}">
+              <li>
+                <p class="caller">{{ item.get().caller }}</p>
+                <p class="assistant">{{ item.get().reply }}</p>
+              </li>
+            </ForEach>
+          </ol>
+        </section>
+      </If>
+
+      <footer class="muted">
+        <span id="runtime">{{ state.summary() }}</span>
+        <span id="network">{{ state.network() }}</span>
+        <span>Built with <a href="https://github.com/fusor-rs/fusor-ai">fusor-ai</a> and <a href="https://fusor.build">fusor</a> · models: <a href="https://huggingface.co/moondream/parakeet-redux">Parakeet Redux</a>, <a href="https://huggingface.co/LiquidAI/LFM3-1.7B">LFM3-1.7B</a>, <a href="https://huggingface.co/gradium/phonon-31m-en">Phonon</a> · <a href="https://github.com/fusor-rs/voice-call-wasm">source</a></span>
+      </footer>
+    </main>
+  </App>
+</body>
+</html>
