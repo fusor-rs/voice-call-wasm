@@ -7,6 +7,8 @@
 
 # A voice call answered in the browser, on the CPU
 
+**[Try it in your browser](https://huggingface.co/spaces/fusorlabs/voice-call-wasm)**: no install, no server. The models download once and run on your CPU.
+
 **The reply starts 1.5 s after you stop talking**, 0.6 s of it the silence that tells the page your turn is over, in headless Chrome on an Apple M4 Pro: the median of a three-turn call, every stage measured. [How fast is it](#how-fast-is-it)
 
 <img src="assets/demo/call.png" alt="voice-call-wasm in Chrome after a three-turn call: three models loaded, the latency of each turn split into its stages (median response 1483 ms), the conversation, and zero network requests since the models loaded" width="720">
@@ -17,7 +19,7 @@ voice-call-wasm is the app around the models: a [fusor](https://github.com/fusor
 
 **In development · v0.1**: this is experimental software. See [status and known limitations](#status-and-known-limitations).
 
-[Run it](#run-it-locally) · [How a call works](#how-a-call-works) · [How it works](#how-it-works) · [How fast is it](#how-fast-is-it) · [Status](#status-and-known-limitations)
+[Run it](#run-it-locally) · [Try it online](#try-it-online) · [How a call works](#how-a-call-works) · [How it works](#how-it-works) · [How fast is it](#how-fast-is-it) · [Status](#status-and-known-limitations)
 
 ## Run it locally
 
@@ -33,6 +35,10 @@ and open the address it prints in Chrome or Edge. `just ui` installs the pinned 
 Pick the assistant's voice, press **Start call** and allow the microphone. Say something, then pause: after 0.6 s of silence your turn ends and the reply plays. When it has played, the page listens again; **Hang up** ends the call and forgets the conversation.
 
 The page shows each turn's latency as it happens, split into the stages below, with their medians over the call, the conversation, and the network requests since the models loaded (they stay at zero). `?endpoint=0.4` ends a turn after a shorter silence, `?level=` sets how loud a frame must be to count as speech (an RMS of 0.015), and `?asr=`, `?llm=` and `?tts=` set each model's threads (4, 6 and 2).
+
+## Try it online
+
+Open the Hugging Face Space [fusorlabs/voice-call-wasm](https://huggingface.co/spaces/fusorlabs/voice-call-wasm) in Chrome or Edge. The page downloads the three models (2.2 GB) once from [fusorlabs/voice-call-wasm-web](https://huggingface.co/fusorlabs/voice-call-wasm-web) and keeps them in the browser's storage, so the next visit loads from this device.
 
 ## How a call works
 
@@ -122,10 +128,9 @@ voice-call-wasm is v0.1 and experimental.
 - Interrupting the assistant: the call is half duplex, and the microphone is closed while the reply plays.
 - Ending a turn on anything but silence: a pause of 0.6 s mid-sentence ends it too.
 - A voice in languages other than English: Phonon speaks English only.
-- A hosted page: run it locally.
 - A GPU backend.
 
-The models are Moondream's [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux), from NVIDIA's [parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (CC-BY-4.0); Liquid AI's [LFM3-1.7B](https://huggingface.co/LiquidAI/LFM3-1.7B), under the LFM Open License v1.0, whose license the bundle ships beside its weights (`model/lfm3-1.7b/LICENSE`); and Gradium's [Phonon](https://huggingface.co/gradium/phonon-31m-en) with its catalog voices.
+The models are Moondream's [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux), from NVIDIA's [parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (CC-BY-4.0); Liquid AI's [LFM3-1.7B](https://huggingface.co/LiquidAI/LFM3-1.7B), under the LFM Open License v1.0, whose license the bundle ships beside its weights (`model/lfm3-1.7b/LICENSE`); and Gradium's [Phonon](https://huggingface.co/gradium/phonon-31m-en) with its catalog voices, Apache-2.0. The Space loads the bundles from [fusorlabs/voice-call-wasm-web](https://huggingface.co/fusorlabs/voice-call-wasm-web).
 
 ## License
 

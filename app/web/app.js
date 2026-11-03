@@ -14,10 +14,14 @@ const cores = navigator.hardwareConcurrency || 4;
 // `?asr=`, `?llm=` and `?tts=` set an engine's threads. The LLM and the voice run at the same
 // time, so their threads together stay below the cores: the barriers spin.
 const threads = (name, fallback) => Math.min(cores, Number.parseInt(params.get(name) ?? '', 10) || fallback);
+// The bundles: beside the page (`just serve` mounts dist/model there), or, in the Hugging Face
+// Space, which holds at most 1 GB, in the model repo `just deploy-model` fills.
+const HOSTED_MODELS = 'https://huggingface.co/fusorlabs/voice-call-wasm-web/resolve/main/';
+const MODELS = location.hostname.endsWith('.hf.space') ? HOSTED_MODELS : 'model/';
 const ENGINES = {
-  asr: { label: 'Parakeet Redux', model: 'model/parakeet/', threads: threads('asr', 4) },
-  llm: { label: 'LFM3-1.7B', model: 'model/lfm3-1.7b/', threads: threads('llm', 6) },
-  tts: { label: 'Phonon', model: 'model/phonon/', threads: threads('tts', 2) },
+  asr: { label: 'Parakeet Redux', model: `${MODELS}parakeet/`, threads: threads('asr', 4) },
+  llm: { label: 'LFM3-1.7B', model: `${MODELS}lfm3-1.7b/`, threads: threads('llm', 6) },
+  tts: { label: 'Phonon', model: `${MODELS}phonon/`, threads: threads('tts', 2) },
 };
 // `?endpoint=` (seconds of silence that end a turn) and `?level=` (the RMS of a voiced frame).
 const ENDPOINT_SECONDS = Number.parseFloat(params.get('endpoint') ?? '') || 0.6;

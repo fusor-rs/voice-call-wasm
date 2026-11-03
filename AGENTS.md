@@ -32,6 +32,10 @@ does; don't invent scope, features or options beyond the task.
   Phonon's CLI into `fixtures/calls/` (not committed).
 - `assets/`: the README's banner and flow diagram, HTML rendered to PNG by
   `just images`.
+- `space/`: the Hugging Face Space's configuration (`README.md`) and the card of
+  the model repo its bundles load from (`MODEL.md`); `scripts/site-bundle.mjs`
+  names a bundle's tensor parts by their BLAKE3 for the site. `just deploy-model`
+  goes before `just deploy-space` whenever a bundle changes.
 
 What belongs where: model code and anything another model could reuse go to
 fusor-ai, following its `AGENTS.md`. This repository holds what turns the models

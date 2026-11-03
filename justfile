@@ -66,3 +66,62 @@ fixtures: model
 images:
     cd vendor/fusor-ai/packages/e2e && npm ci --no-audit --no-fund --silent && npx playwright install chromium
     node scripts/render-images.mjs
+
+# The page and the bundles beside it, as one static site in target/site, each bundle's tensor parts
+# named by their BLAKE3.
+site: runtimes page
+    rm -rf target/site
+    mkdir -p target/site
+    cp -R {{app}}/dist/. target/site/
+    find target/site -name '.fusor-*.json' -delete
+    for bundle in parakeet phonon lfm3-1.7b; do node scripts/site-bundle.mjs {{model}}/$bundle target/site/model/$bundle || exit 1; done
+    cp {{model}}/lfm3-1.7b/LICENSE target/site/model/lfm3-1.7b/
+
+# The Space holds at most 1 GB, so it gets the page, the runtimes and LFM3's license, and the page
+# loads the bundles from the model repo fusorlabs/voice-call-wasm-web (`just deploy-model`). The
+# Space is created as a static Space first: creating it with the upload makes a Gradio Space,
+# which Hugging Face refuses for a free organization.
+# The site to the Hugging Face Space fusorlabs/voice-call-wasm, configured by space/README.md.
+deploy-space: site
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf target/space
+    rsync -a --exclude /model target/site/ target/space/
+    rsync -a --include '*/' --include 'LICENSE*' --exclude '*' target/site/model/ target/space/model/
+    cp space/README.md target/space/
+    uv run --no-project --with huggingface_hub==0.36.2 python - target/space <<'PY'
+    import sys
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.create_repo("fusorlabs/voice-call-wasm", repo_type="space", space_sdk="static", exist_ok=True)
+    api.upload_folder(
+        repo_id="fusorlabs/voice-call-wasm",
+        repo_type="space",
+        folder_path=sys.argv[1],
+        delete_patterns="*",
+        commit_message="Deploy voice-call-wasm {{version}}",
+    )
+    PY
+
+# Deploy them before the Space whenever a bundle changes: a runtime only loads a bundle compiled
+# with the same fusor-ai.
+# The site's three bundles, with space/MODEL.md as their card, to the model repo
+# fusorlabs/voice-call-wasm-web.
+deploy-model: site
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cp space/MODEL.md target/site/model/README.md
+    uv run --no-project --with huggingface_hub==0.36.2 python - target/site/model <<'PY'
+    import sys
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.create_repo("fusorlabs/voice-call-wasm-web", exist_ok=True)
+    api.upload_folder(
+        repo_id="fusorlabs/voice-call-wasm-web",
+        folder_path=sys.argv[1],
+        delete_patterns="*",
+        commit_message="Deploy the voice-call-wasm {{version}} bundles",
+    )
+    PY
